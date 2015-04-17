@@ -81,7 +81,7 @@ func openURL(URL string) {
 func moveAngle(x, y string) {
 	fmt.Println(x)
 	fmt.Println(y)
-	q := fmt.Sprintf("xdotool mousemove_relative --polar  %[1]s %[2]s ", x, y)
+	q := fmt.Sprintf("xdotool mousemove_relative --polar -- %[1]s %[2]s ", x, y)
 	fmt.Println(q)
 	cmd := exec.Command("bash", "-c", q)
 	var waitStatus syscall.WaitStatus
@@ -102,10 +102,69 @@ func moveAngle(x, y string) {
 }
 
 func move(x, y string) {
-	fmt.Println(x)
-	fmt.Println(y)
 	q := fmt.Sprintf("xdotool mousemove_relative --  %[1]s %[2]s ", x, y)
+	cmd := exec.Command("bash", "-c", q)
+	var waitStatus syscall.WaitStatus
+	if err := cmd.Run(); err != nil {
+		fmt.Println("There was an error")
+		fmt.Println(err)
+		printError(err)
+		// Did the command fail because of an unsuccessful exit code
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus = exitError.Sys().(syscall.WaitStatus)
+			printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+		}
+	} else {
+		// Command was successful
+		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+		printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+	}
+}
+
+func text(x string) {
+	q := fmt.Sprintf("xdotool type \"%s\"", x)
 	fmt.Println(q)
+
+	cmd := exec.Command("bash", "-c", q)
+	var waitStatus syscall.WaitStatus
+	if err := cmd.Run(); err != nil {
+		fmt.Println("There was an error")
+		fmt.Println(err)
+		printError(err)
+		// Did the command fail because of an unsuccessful exit code
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus = exitError.Sys().(syscall.WaitStatus)
+			printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+		}
+	} else {
+		// Command was successful
+		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+		printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+	}
+}
+
+func click() {
+	q := fmt.Sprintf("xdotool click 1")
+	cmd := exec.Command("bash", "-c", q)
+	var waitStatus syscall.WaitStatus
+	if err := cmd.Run(); err != nil {
+		fmt.Println("There was an error")
+		fmt.Println(err)
+		printError(err)
+		// Did the command fail because of an unsuccessful exit code
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus = exitError.Sys().(syscall.WaitStatus)
+			printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+		}
+	} else {
+		// Command was successful
+		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+		printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+	}
+}
+
+func rclick() {
+	q := fmt.Sprintf("xdotool click 3")
 	cmd := exec.Command("bash", "-c", q)
 	var waitStatus syscall.WaitStatus
 	if err := cmd.Run(); err != nil {
@@ -178,6 +237,15 @@ func (job SmallJob) run() string {
 		openURL(job.param1)
 	case "launch":
 		launch(job.param1)
+	case "mouse":
+		switch job.param1 {
+		case "left":
+			click()
+		case "right":
+			rclick()
+		}
+	case "text":
+		text(job.param1)
 	}
 
 	return "done with param = " + job.param1
@@ -203,7 +271,7 @@ func jobFactory(input string) JobInterface {
 		param1 := array[1]
 		param2 := strings.TrimSuffix(array[2], "\r")
 		switch command {
-		case "move", "angle", "open", "launch":
+		case "move", "angle", "open", "launch", "mouse", "text":
 			return SmallJob{Job{
 				param1:  param1,
 				param2:  param2,
@@ -220,9 +288,10 @@ func requestHandler(conn net.Conn, out chan string) {
 	for {
 		line, err := bufio.NewReader(conn).ReadBytes('\n')
 		if err != nil {
+			fmt.Println(err.Error())
 			return
 		}
-
+		fmt.Println(string(line))
 		job := jobFactory(strings.TrimRight(string(line), "\n"))
 		go jobRunner(job, out)
 	}
@@ -256,9 +325,9 @@ func main() {
 	psock, err := net.Listen("tcp", ":5000")
 
 	if err != nil {
-		return
+		fmt.Println(err.Error())
 	}
-
+	defer psock.Close()
 	for {
 		conn, err := psock.Accept()
 		if err != nil {
