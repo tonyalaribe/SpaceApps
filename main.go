@@ -197,7 +197,7 @@ func jobRunner(job JobInterface, out chan string) {
 }
 
 func jobFactory(input string) JobInterface {
-	array := strings.Split(input, " ")
+	array := strings.Split(input, ",")
 	if len(array) >= 2 {
 		command := array[0]
 		param1 := array[1]
