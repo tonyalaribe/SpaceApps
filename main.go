@@ -36,8 +36,29 @@ func launch(c string) {
 	case "browser":
 		q = "google-chrome-stable"
 	case "music":
-		q = ""
+		q = "noise"
 	}
+	fmt.Println(q)
+	cmd := exec.Command("bash", "-c", q)
+	var waitStatus syscall.WaitStatus
+	if err := cmd.Run(); err != nil {
+		fmt.Println("There was an error")
+		fmt.Println(err)
+		printError(err)
+		// Did the command fail because of an unsuccessful exit code
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus = exitError.Sys().(syscall.WaitStatus)
+			printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+		}
+	} else {
+		// Command was successful
+		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+		printOutput([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+	}
+}
+
+func music() {
+	q := "noise"
 	fmt.Println(q)
 	cmd := exec.Command("bash", "-c", q)
 	var waitStatus syscall.WaitStatus
